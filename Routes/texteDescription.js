@@ -36,7 +36,9 @@ router.get("/text", async (req, res) => {
 router.put("/text/edit", isAuthentificated, async (req, res) => {
   try {
     const { description, id } = req.body;
-    await TextDescription.findByIdAndUpdate(id, description);
+    await TextDescription.findByIdAndUpdate(id, {
+      description,
+    });
 
     return res.status(200).json({ message: "Texte mis à jour." });
   } catch (error) {
