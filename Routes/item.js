@@ -36,37 +36,18 @@ router.post(
         if (req.files?.images) {
           const arrayOfPictures = req.files.images;
 
-          if (arrayOfPictures.length) {
-            const arrayOfPromises = arrayOfPictures.map((picture) => {
-              return cloudinary.uploader.upload(convertToBase64(picture), {
-                folder: "/tatooShop/tatoo/" + newItems._id,
-              });
-            });
+          const picture = await cloudinary.uploader.upload(
+            convertToBase64(arrayOfPictures),
+            {
+              folder: "/tatooShop/tatoo/" + newItems._id,
+            }
+          );
 
-            const pictures = await Promise.all(arrayOfPromises);
-
-            pictures.forEach((picture) => {
-              const image = {
-                public_id: picture.public_id,
-                secure_url: picture.secure_url,
-              };
-
-              newItems.images.push(image);
-            });
-          } else {
-            const picture = await cloudinary.uploader.upload(
-              convertToBase64(arrayOfPictures),
-              {
-                folder: "/tatooShop/tatoo/" + newItems._id,
-              }
-            );
-
-            const image = {
-              public_id: picture.public_id,
-              secure_url: picture.secure_url,
-            };
-            newItems.images.push(image);
-          }
+          const image = {
+            public_id: picture.public_id,
+            secure_url: picture.secure_url,
+          };
+          newItems.images.push(image);
 
           await newItems.save();
           return res.status(201).json({
@@ -105,7 +86,10 @@ router.get("/tatoo", async (req, res) => {
     }
 
     let skip = limit * (page - 1);
-
+    let sort = -1;
+    if (req.query.sort) {
+      sort = req.query.sort;
+    }
     if (req.query.search) {
       const filter = new RegExp(req.query.search, "ig");
       const tatoos = await Item.find({
@@ -120,8 +104,10 @@ router.get("/tatoo", async (req, res) => {
           { disable: true },
         ],
       })
+
         .skip(skip)
-        .limit(limit);
+        .limit(limit)
+        .sort({ dateOfCreation: sort });
       const count = await Item.count({
         $and: [
           {
@@ -138,7 +124,10 @@ router.get("/tatoo", async (req, res) => {
       return res.status(200).json({ tatoos: tatoos, count: count });
     }
 
-    const tatoos = await Item.find({ disable: true }).skip(skip).limit(limit);
+    const tatoos = await Item.find({ disable: true })
+      .skip(skip)
+      .limit(limit)
+      .sort({ dateOfCreation: sort });
     const count = await Item.count({ disable: true });
 
     return res.status(200).json({ tatoos: tatoos, count: count });
@@ -163,6 +152,10 @@ router.get("/tatoo/all", isAuthentificated, async (req, res) => {
 
     let skip = limit * (page - 1);
 
+    let sort = -1;
+    if (req.query.sort) {
+      sort = req.query.sort;
+    }
     if (req.query.search) {
       const filter = new RegExp(req.query.search, "ig");
       const tatoos = await Item.find({
@@ -177,8 +170,10 @@ router.get("/tatoo/all", isAuthentificated, async (req, res) => {
           { disable: true },
         ],
       })
+
         .skip(skip)
-        .limit(limit);
+        .limit(limit)
+        .sort({ dateOfCreation: sort });
       const count = await Item.count({
         $or: [{ name: filter }, { description: filter }, { keywords: filter }],
       });
@@ -186,7 +181,10 @@ router.get("/tatoo/all", isAuthentificated, async (req, res) => {
       return res.status(200).json({ tatoos: tatoos, count: count });
     }
 
-    const tatoos = await Item.find().skip(skip).limit(limit);
+    const tatoos = await Item.find()
+      .skip(skip)
+      .limit(limit)
+      .sort({ dateOfCreation: sort });
     const count = await Item.count();
     return res.status(200).json({ tatoos: tatoos, count: count });
   } catch (error) {
@@ -235,35 +233,35 @@ router.delete("/tatoo/delete/:id", isAuthentificated, async (req, res) => {
   }
 });
 
-router.put("/tatoo/deletepicture/:id", isAuthentificated, async (req, res) => {
-  try {
-    const { image } = req.body;
-    const { id } = req.params;
+// router.put("/tatoo/deletepicture/:id", isAuthentificated, async (req, res) => {
+//   try {
+//     const { image } = req.body;
+//     const { id } = req.params;
 
-    const itemToEdit = await Item.findById(id);
-    if (itemToEdit.images.length === 1) {
-      return res.status(403).json({
-        message:
-          "Impossible de supprimer votre image. Vous devez avoir au moin une image à presenter pour un flash.",
-      });
-    }
-    const index = itemToEdit.images.findIndex(
-      (imageToCheck) => imageToCheck.public_id === image.public_id
-    );
+//     const itemToEdit = await Item.findById(id);
+//     if (itemToEdit.images.length === 1) {
+//       return res.status(403).json({
+//         message:
+//           "Impossible de supprimer votre image. Vous devez avoir au moin une image à presenter pour un flash.",
+//       });
+//     }
+//     const index = itemToEdit.images.findIndex(
+//       (imageToCheck) => imageToCheck.public_id === image.public_id
+//     );
 
-    itemToEdit.images.splice(index, 1);
-    await cloudinary.uploader.destroy(image.public_id);
-    await itemToEdit.save();
+//     itemToEdit.images.splice(index, 1);
+//     await cloudinary.uploader.destroy(image.public_id);
+//     await itemToEdit.save();
 
-    res.status(200).json(itemToEdit);
-  } catch (error) {
-    if (error.status) {
-      return res.status(error.status).json({ message: error.message });
-    } else {
-      return res.status(500).json({ message: error.message });
-    }
-  }
-});
+//     res.status(200).json(itemToEdit);
+//   } catch (error) {
+//     if (error.status) {
+//       return res.status(error.status).json({ message: error.message });
+//     } else {
+//       return res.status(500).json({ message: error.message });
+//     }
+//   }
+// });
 
 router.put("/tatoo/edit", isAuthentificated, fileUpload(), async (req, res) => {
   try {
@@ -284,46 +282,60 @@ router.put("/tatoo/edit", isAuthentificated, fileUpload(), async (req, res) => {
     }
 
     if (req.files?.imagesToAdd) {
-      const arrayOfPictures = req.files.imagesToAdd;
+      await cloudinary.uploader.destroy(itemToEdit.images[0].public_id);
 
-      if (itemToEdit.images.length === 3) {
-        return res.status(403).json({
-          message:
-            "Impossible de rajouter votre image. Vous avez déjà atteint le nombre maxilmal d'images pour ce flash.",
-        });
-      }
-      if (arrayOfPictures.length) {
-        const arrayOfPromises = arrayOfPictures.map((picture) => {
-          return cloudinary.uploader.upload(convertToBase64(picture), {
-            folder: "/tatooShop/tatoo/" + itemToEdit._id,
-          });
-        });
-
-        const pictures = await Promise.all(arrayOfPromises);
-
-        pictures.forEach((picture) => {
-          const image = {
-            public_id: picture.public_id,
-            secure_url: picture.secure_url,
-          };
-
-          itemToEdit.images.push(image);
-        });
-      } else {
-        const picture = await cloudinary.uploader.upload(
-          convertToBase64(arrayOfPictures),
-          {
-            folder: "/tatooShop/tatoo/" + itemToEdit._id,
-          }
-        );
-
-        const image = {
-          public_id: picture.public_id,
-          secure_url: picture.secure_url,
-        };
-        itemToEdit.images.push(image);
-      }
+      const response = await cloudinary.uploader.upload(
+        convertToBase64(req.files.imagesToAdd),
+        {
+          folder: "/tatooShop/Admin/Avatar",
+          public_id: "avatar_" + itemToEdit._id,
+        }
+      );
+      itemToEdit.images[0].secure_url = response.secure_url;
+      itemToEdit.images[0].public_id = response.public_id;
     }
+
+    // if (req.files?.imagesToAdd) {
+    //   const arrayOfPictures = req.files.imagesToAdd;
+
+    //   if (itemToEdit.images.length === 3) {
+    //     return res.status(403).json({
+    //       message:
+    //         "Impossible de rajouter votre image. Vous avez déjà atteint le nombre maxilmal d'images pour ce flash.",
+    //     });
+    //   }
+    //   if (arrayOfPictures.length) {
+    //     const arrayOfPromises = arrayOfPictures.map((picture) => {
+    //       return cloudinary.uploader.upload(convertToBase64(picture), {
+    //         folder: "/tatooShop/tatoo/" + itemToEdit._id,
+    //       });
+    //     });
+
+    //     const pictures = await Promise.all(arrayOfPromises);
+
+    //     pictures.forEach((picture) => {
+    //       const image = {
+    //         public_id: picture.public_id,
+    //         secure_url: picture.secure_url,
+    //       };
+
+    //       itemToEdit.images.push(image);
+    //     });
+    //   } else {
+    //     const picture = await cloudinary.uploader.upload(
+    //       convertToBase64(arrayOfPictures),
+    //       {
+    //         folder: "/tatooShop/tatoo/" + itemToEdit._id,
+    //       }
+    //     );
+
+    //     const image = {
+    //       public_id: picture.public_id,
+    //       secure_url: picture.secure_url,
+    //     };
+    //     itemToEdit.images.push(image);
+    //   }
+    // }
 
     await itemToEdit.save();
 

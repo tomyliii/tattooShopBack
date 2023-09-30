@@ -12,74 +12,74 @@ const BookItem = require("../Models/BookItem");
 const CustomerMessage = require("../Models/CustomerMessage");
 const ProjectCustomer = require("../Models/ProjectCustomer");
 const Item = require("../Models/Item");
-Item;
-router.post("/admin/createaccount", fileUpload(), async (req, res) => {
-  const { password, mail, number, firstname, lastname } = req.body;
-  try {
-    if (password && mail && firstname && lastname) {
-      const mailLowerCase = mail.toLowerCase().trim();
-      if (await Admin.findOne({ mail: mailLowerCase })) {
-        return res
-          .status(409)
-          .json({ message: "Adresse e-mail déjà utilisée." });
-      } else {
-        const salt = uid2(16);
-        token = uid2(16);
-        const hash = SHA256(password + salt).toString(base64);
+const Customer = require("../Models/Customer");
+// router.post("/admin/createaccount", fileUpload(), async (req, res) => {
+//   const { password, mail, number, firstname, lastname } = req.body;
+//   try {
+//     if (password && mail && firstname && lastname) {
+//       const mailLowerCase = mail.toLowerCase().trim();
+//       if (await Admin.findOne({ mail: mailLowerCase })) {
+//         return res
+//           .status(409)
+//           .json({ message: "Adresse e-mail déjà utilisée." });
+//       } else {
+//         const salt = uid2(16);
+//         token = uid2(16);
+//         const hash = SHA256(password + salt).toString(base64);
 
-        const newAdmin = new Admin({
-          firstname,
-          lastname,
-          mail: mailLowerCase,
-          salt,
-          token,
-          hash,
-          dateOfCreation: new Date(),
-        });
-        if (number) {
-          newAdmin.phoneNumber = Number(number);
-        }
-        if (req.files?.avatar) {
-          const avatar = await cloudinary.uploader.upload(
-            convertToBase64(req.files.avatar),
-            {
-              folder: "/tatooShop/Admin/Avatar",
-              public_id: "avatar_" + newAdmin._id,
-            }
-          );
-          newAdmin.avatar = {
-            secure_url: avatar.secure_url,
-            public_id: avatar.public_id,
-          };
-        } else {
-          const avatar = await cloudinary.api.resources({
-            type: "upload",
-            prefix: "tatooShop/Admin/Standard/Avatar_Standard",
-          });
+//         const newAdmin = new Admin({
+//           firstname,
+//           lastname,
+//           mail: mailLowerCase,
+//           salt,
+//           token,
+//           hash,
+//           dateOfCreation: new Date(),
+//         });
+//         if (number) {
+//           newAdmin.phoneNumber = Number(number);
+//         }
+//         if (req.files?.avatar) {
+//           const avatar = await cloudinary.uploader.upload(
+//             convertToBase64(req.files.avatar),
+//             {
+//               folder: "/tatooShop/Admin/Avatar",
+//               public_id: "avatar_" + newAdmin._id,
+//             }
+//           );
+//           newAdmin.avatar = {
+//             secure_url: avatar.secure_url,
+//             public_id: avatar.public_id,
+//           };
+//         } else {
+//           const avatar = await cloudinary.api.resources({
+//             type: "upload",
+//             prefix: "tatooShop/Admin/Standard/Avatar_Standard",
+//           });
 
-          newAdmin.avatar = {
-            secure_url: avatar.resources[0].secure_url,
-            public_id: avatar.resources[0].public_id,
-          };
-        }
-        await newAdmin.save();
-        return res.status(201).json({
-          token,
-          message: "Compte créé avec succès.",
-          name: newAdmin.fullName,
-        });
-      }
-    } else {
-      return res.status(422).json({ message: "Informations manquantes" });
-    }
-  } catch (error) {
-    if (error.status) {
-      return res.status(error.status).json({ message: error.message });
-    } else {
-      return res.status(500).json({ message: error.message });
-    }
-  }
-});
+//           newAdmin.avatar = {
+//             secure_url: avatar.resources[0].secure_url,
+//             public_id: avatar.resources[0].public_id,
+//           };
+//         }
+//         await newAdmin.save();
+//         return res.status(201).json({
+//           token,
+//           message: "Compte créé avec succès.",
+//           name: newAdmin.fullName,
+//         });
+//       }
+//     } else {
+//       return res.status(422).json({ message: "Informations manquantes" });
+//     }
+//   } catch (error) {
+//     if (error.status) {
+//       return res.status(error.status).json({ message: error.message });
+//     } else {
+//       return res.status(500).json({ message: error.message });
+//     }
+//   }
+// });
 router.post("/admin/login", async (req, res) => {
   try {
     const { password, mail } = req.body;
@@ -244,6 +244,19 @@ router.get("/admin/customersprojects", isAuthentificated, async (req, res) => {
       );
       return res.status(200).json(projects);
     }
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
+    } else {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+});
+
+router.get("/admin/customer/list", isAuthentificated, async (req, res) => {
+  try {
+    const customerList = await Customer.find();
+    return res.status(200).json(customerList);
   } catch (error) {
     if (error.status) {
       return res.status(error.status).json({ message: error.message });
